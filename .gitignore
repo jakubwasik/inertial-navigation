@@ -1,0 +1,8 @@
+Debug/
+.settings/
+.cproject
+.mxproject
+.project
+STM32F407VGTx_FLASH.ld
+STM32F407G-DISC1.xml
+inertial_navigation Debug.cfg

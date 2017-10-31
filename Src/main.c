@@ -53,6 +53,7 @@
 #include "gpio.h"
 
 /* USER CODE BEGIN Includes */
+#include "math.h"
 #include "usbd_cdc_if.h"
 #include "LSM6DS33_accelerometer.h"
 /* USER CODE END Includes */
@@ -62,8 +63,13 @@
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 
-int16_t x_axis = 0, y_axis = 0, z_axis = 0;
-float x_axis_float = 0.0, y_axis_float = 0.0, z_axis_float = 0.0;
+// variables for storing accelerometer data
+int16_t acc_x = 0, acc_y = 0, acc_z = 0;
+double acc_x_g = 0.0, acc_y_g = 0.0, acc_z_g = 0.0;
+
+// variables for storing gyroscope data
+int16_t gyro_x = 0, gyro_y = 0, gyro_z = 0;
+double gyro_x_dps = 0.0, gyro_y_dps = 0.0, gyro_z_dps = 0.0;
 
 /* USER CODE END PV */
 
@@ -120,26 +126,32 @@ int main(void)
 	while (1) {
 		HAL_GPIO_TogglePin(LD4_GPIO_Port, LD4_Pin);
 
-		// read acceleration in all axis
-		x_axis = accelerometerReadAxisValue(&hi2c3, LSM6DS33_OUTX_L_XL);
-		y_axis = accelerometerReadAxisValue(&hi2c3, LSM6DS33_OUTY_L_XL);
-		z_axis = accelerometerReadAxisValue(&hi2c3, LSM6DS33_OUTZ_L_XL);
+		// read linear acceleration in all axis
+		accelerometerReadAllAxis(&hi2c3, &acc_x, &acc_y, &acc_z);
 
-		// turn these values into g units
-		x_axis_float =
-				((float) x_axis * LSM6DS33_ACC_RESOLUTION / (float) INT16_MAX);
-		y_axis_float =
-				((float) y_axis * LSM6DS33_ACC_RESOLUTION / (float) INT16_MAX);
-		z_axis_float =
-				((float) z_axis * LSM6DS33_ACC_RESOLUTION / (float) INT16_MAX);
+		// read angular rate in all axis
+		gyroscopeReadAllAxis(&hi2c3, &gyro_x, &gyro_y, &gyro_z);
+
+		// turn accelerometer values into g units
+		acc_x_g = ((double) acc_x * LSM6DS33_ACC_RESOLUTION / (double) INT16_MAX);
+		acc_y_g = ((double) acc_y * LSM6DS33_ACC_RESOLUTION / (double) INT16_MAX);
+		acc_z_g = ((double) acc_z * LSM6DS33_ACC_RESOLUTION / (double) INT16_MAX);
+
+		// turn gyroscope values into dps units
+		gyro_x_dps = ((double) gyro_x * LSM6DS33_GYRO_RESOLUTION
+				/ (double) INT16_MAX);
+		gyro_y_dps = ((double) gyro_y * LSM6DS33_GYRO_RESOLUTION
+				/ (double) INT16_MAX);
+		gyro_z_dps = ((double) gyro_z * LSM6DS33_GYRO_RESOLUTION
+				/ (double) INT16_MAX);
 
 		// send data (in int16_t) over USB
 		messageLength = sprintf((char *) dataToSend,
 						"Acceleration values:\n\rX axis = %d\n\rY axis = %d\n\rZ axis = %d\n\r\n\r",
-				x_axis, y_axis, z_axis);
+				acc_x, acc_y, acc_z);
 		CDC_Transmit_FS(dataToSend, messageLength);
 
-		HAL_Delay(500);
+		HAL_Delay(200);
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */

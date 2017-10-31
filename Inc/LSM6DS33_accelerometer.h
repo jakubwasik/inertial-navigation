@@ -15,9 +15,16 @@
 // Who am I
 #define LSM6DS33_WHO_AM_I 0x0F
 
-// control register 1
+// Angular rate sensor sign and orientation register
+#define LSM6DS33_ORIENT_CFG_G 0x0B
+
+// Linear acceleration control register 1
 // CTRL1_XL [ODR_XL3][ODR_XL2][ODR_XL1][ODR_XL0][FS_XL1][FS_XL0][BW_XL1][BW_XL0]
 #define LSM6DS33_CTRL1_XL 0x10
+
+// Angular rate control register 2
+// CTRL1_XL [ODR_G3][ODR_G2][ODR_G1][ODR_G0][FS_G1][FS_G0][FS_125][0]
+#define LSM6DS33_CTRL2_G 0x11
 
 // Accelerometer data registers
 #define LSM6DS33_OUTX_L_XL 0x28
@@ -27,22 +34,42 @@
 #define LSM6DS33_OUTZ_L_XL 0x2C
 #define LSM6DS33_OUTZ_H_XL 0x2D
 
+// Gyroscope data registers
+#define LSM6DS33_OUTX_L_G 0x22
+#define LSM6DS33_OUTX_H_G 0x23
+#define LSM6DS33_OUTY_L_G 0x24
+#define LSM6DS33_OUTY_H_G 0x25
+#define LSM6DS33_OUTZ_L_G 0x26
+#define LSM6DS33_OUTZ_H_G 0x27
+
 /*************** end of registry addresses ***************/
-
-// accelerometer address expressed as a 8 bit number
-#define LSM6DS33_ACC_ADDRESS (0x6B << 1)
-
-// ODR = 0b0100, 104HZ HIGH PERFORMANCE with XL_HM_MODE = 0
-#define LSM6DS33_ACC_104HZ 0x40
-
-// Maximum geforce value [g]
-#define LSM6DS33_ACC_RESOLUTION 2.0
 
 // This value indicates correct communication
 #define LSM6DS33_WHO_AM_I_OK 0x69
 
+// Gyroscope orientation Orient[2:0] in ORIENT_CFG_G -> in order to achieve proper roll & pitch & yaw
+#define LSM6DS33_GYRO_ORIENT 0x02
+
+// LSM6DS33 accelerometer & gyroscope address expressed as a 8 bit number
+#define LSM6DS33_ADDRESS (0x6B << 1)
+
+// ODR_XL[3:0] = 0b0100, 104HZ HIGH PERFORMANCE with XL_HM_MODE = 0 (default)
+#define LSM6DS33_ACC_104HZ 0x40
+
+// Accelerometer full-scale selection [g] FS_XL[1:0]
+#define LSM6DS33_ACC_RESOLUTION 2.0
+
+// ODR_G[3:0] = 0b0100, 104HZ HIGH PERFORMANCE with XL_HM_MODE = 0 (default)
+#define LSM6DS33_GYRO_104HZ 0x40
+
+// Gyroscope full-scale selection [dps] FS_G[1:0]
+#define LSM6DS33_GYRO_RESOLUTION 245.0
+
 void checkI2CConnection(I2C_HandleTypeDef *hi2c);
 void initializeI2C(I2C_HandleTypeDef *hi2c);
-int16_t accelerometerReadAxisValue(I2C_HandleTypeDef *hi2c, uint16_t axis);
+void accelerometerReadAllAxis(I2C_HandleTypeDef *hi2c, int16_t *acc_x,
+		int16_t *acc_y, int16_t *acc_z);
+void gyroscopeReadAllAxis(I2C_HandleTypeDef *hi2c, int16_t *gyro_x,
+		int16_t *gyro_y, int16_t *gyro_z);
 
 #endif /* LSM6DS33_ACCELEROMETER_H_ */

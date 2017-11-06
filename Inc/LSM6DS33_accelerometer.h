@@ -55,12 +55,16 @@
 
 // ODR_XL[3:0] = 0b0100, 104HZ HIGH PERFORMANCE with XL_HM_MODE = 0 (default)
 #define LSM6DS33_ACC_104HZ 0x40
+#define LSM6DS33_ACC_208HZ 0x50
+#define LSM6DS33_ACC_416HZ 0x60 // read every 0.0025s
 
 // Accelerometer full-scale selection [g] FS_XL[1:0]
 #define LSM6DS33_ACC_RESOLUTION 2.0
 
 // ODR_G[3:0] = 0b0100, 104HZ HIGH PERFORMANCE with XL_HM_MODE = 0 (default)
 #define LSM6DS33_GYRO_104HZ 0x40
+#define LSM6DS33_GYRO_208HZ 0x50
+#define LSM6DS33_GYRO_416HZ 0x60
 
 // Gyroscope full-scale selection [dps] FS_G[1:0]
 #define LSM6DS33_GYRO_RESOLUTION 245.0
@@ -71,5 +75,9 @@ void accelerometerReadAllAxis(I2C_HandleTypeDef *hi2c, int16_t *acc_x,
 		int16_t *acc_y, int16_t *acc_z);
 void gyroscopeReadAllAxis(I2C_HandleTypeDef *hi2c, int16_t *gyro_x,
 		int16_t *gyro_y, int16_t *gyro_z);
+
+// function read all data from Accelerometer and Gyroscope
+// Data, which is stored in uint8_t vector, is used by USB communication
+void readDataFromLSM6DS33(I2C_HandleTypeDef *hi2c, uint8_t *data);
 
 #endif /* LSM6DS33_ACCELEROMETER_H_ */

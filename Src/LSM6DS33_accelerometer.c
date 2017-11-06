@@ -28,8 +28,8 @@ void checkI2CConnection(I2C_HandleTypeDef *hi2c) {
 }
 
 void initializeI2C(I2C_HandleTypeDef *hi2c) {
-	uint8_t acc_settings = LSM6DS33_ACC_104HZ;
-	uint8_t gyro_settings = LSM6DS33_GYRO_104HZ;
+	uint8_t acc_settings = LSM6DS33_ACC_416HZ;
+	uint8_t gyro_settings = LSM6DS33_GYRO_416HZ;
 	uint8_t gyro_orientation = LSM6DS33_GYRO_ORIENT;
 
 	// write accelerometer settings
@@ -87,5 +87,27 @@ void gyroscopeReadAllAxis(I2C_HandleTypeDef *hi2c, int16_t *gyro_x,
 	*gyro_x = temp_x > INT16_MAX ? temp_x + 2 * INT16_MIN : temp_x;
 	*gyro_y = temp_y > INT16_MAX ? temp_y + 2 * INT16_MIN : temp_y;
 	*gyro_z = temp_z > INT16_MAX ? temp_z + 2 * INT16_MIN : temp_z;
+}
+
+void readDataFromLSM6DS33(I2C_HandleTypeDef *hi2c, uint8_t *data) {
+	if (data != NULL) {
+		// read high and low byte from all axis -> start address is LSM6DS33_OUTX_L_g
+		HAL_I2C_Mem_Read(hi2c, LSM6DS33_ADDRESS, LSM6DS33_OUTX_L_G, 1, data, 12,
+				kI2CTimeout);
+	}
+
+	/* data[0] - gyro_x LB
+	 * data[1] - gyro_x HB
+	 * data[2] - gyro_y LB
+	 * data[3] - gyro_y HB
+	 * data[4] - gyro_z LB
+	 * data[5] - gyro_z HB
+	 * data[6] - acc_x LB
+	 * data[7] - acc_x HB
+	 * data[8] - acc_y LB
+	 * data[9] - acc_y HB
+	 * data[10] - acc_z LB
+	 * data[11] - acc_z HB
+	 */
 }
 

@@ -54,8 +54,11 @@
 
 /* USER CODE BEGIN Includes */
 #include "math.h"
+#include "matrix.h"
 #include "usbd_cdc_if.h"
 #include "LSM6DS33_accelerometer.h"
+#include "LIS3MDL_magnetometer.h"
+
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -63,13 +66,13 @@
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 
-// variables for storing accelerometer data
-int16_t acc_x = 0, acc_y = 0, acc_z = 0;
-double acc_x_g = 0.0, acc_y_g = 0.0, acc_z_g = 0.0;
+// variables for storing accelerometer, gyroscope and magnetometer data
+float acc_x_g = 0.0, acc_y_g = 0.0, acc_z_g = 0.0;
+float gyro_x_dps = 0.0, gyro_y_dps = 0.0, gyro_z_dps = 0.0;
+float mag_x_gauss = 0.0, mag_y_gauss = 0.0, mag_z_gauss = 0.0;
 
-// variables for storing gyroscope data
-int16_t gyro_x = 0, gyro_y = 0, gyro_z = 0;
-double gyro_x_dps = 0.0, gyro_y_dps = 0.0, gyro_z_dps = 0.0;
+float roll = 0.0, pitch = 0.0, yaw = 0.0;
+float roll_estimate = 0.0, pitch_estimate = 0.0, yaw_estimate = 0.0;
 
 /* USER CODE END PV */
 
@@ -78,6 +81,8 @@ void SystemClock_Config(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
+float kalmanFilter(float u, float y, float *A, float *B, float *C, float *Q,
+		float R, float *x_corr, float *P_corr);
 
 /* USER CODE END PFP */
 
@@ -88,8 +93,26 @@ void SystemClock_Config(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	int message_length = 12; // 12 - accelerometer 6 bytes, gyroscope 6 bytes
-	uint8_t data_to_send[message_length];
+	const int kLSM6DS33MessageLength = 12; // 12 - accelerometer 6 bytes, gyroscope 6 bytes
+	const int kLIS3MDLMessageLength = 6;   // magnetometer 6 bytes
+	const int kMessageLength = kLSM6DS33MessageLength + kLIS3MDLMessageLength;
+
+	uint8_t data_to_send[kMessageLength];
+
+	// Kalman filter variables
+	float dt = 0.00001;
+	float A[] = { 1.0, -dt, 0.0, 1.0 };
+	float B[] = { dt, 0.0 };
+	float C[] = { 1.0, 0.0 };
+	float R = 1;
+	float q = 0.0001;
+	float Q[] = { q, 0.0, 0.0, q };
+
+	float u_roll = 0.0, u_pitch = 0.0, u_yaw = 0.0;
+	float x_corr_roll[] = { 0.0, 0.0 }, x_corr_pitch[] = { 0.0, 0.0 },
+			x_corr_yaw[] = { 0.0, 0.0 };
+	float P_corr_roll[] = { q, 0.0, 0.0, q }, P_corr_pitch[] = { q, 0.0, 0.0, q },
+			P_corr_yaw[] = { q, 0.0, 0.0, q };
 
   /* USER CODE END 1 */
 
@@ -116,9 +139,27 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
 
-	checkI2CConnection(&hi2c3);
-	initializeI2C(&hi2c3);
+	checkLIS3MDLConnection(&hi2c3);
+	checkLSM6DS33Connection(&hi2c3);
+	initializeLIS3MDL(&hi2c3);
+	initializeLSM6DS33(&hi2c3);
 
+	// Get new data
+	accelerometerReadAllAxis(&hi2c3, &acc_x_g, &acc_y_g, &acc_z_g);
+	gyroscopeReadAllAxis(&hi2c3, &gyro_x_dps, &gyro_y_dps, &gyro_z_dps);
+	magnetometerReadAllAxis(&hi2c3, &mag_x_gauss, &mag_y_gauss, &mag_z_gauss);
+
+	roll = ((float) atan2(acc_z_g, acc_y_g) * (180.0 / 3.1415926) - 88.9494);
+	pitch = ((float) atan2(acc_z_g, acc_x_g) * (180.0 / 3.1415926) - 91.139);
+	yaw = ((float) atan2(mag_x_gauss, mag_y_gauss) * (180.0 / 3.1415926));
+
+	u_roll = gyro_x_dps;
+	u_pitch = gyro_y_dps;
+	u_yaw = gyro_z_dps;
+
+	x_corr_roll[0] = roll;
+	x_corr_pitch[0] = pitch;
+	x_corr_yaw[0] = yaw;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -126,11 +167,31 @@ int main(void)
 	while (1) {
 		HAL_GPIO_TogglePin(LD4_GPIO_Port, LD4_Pin);
 
-		readDataFromLSM6DS33(&hi2c3, data_to_send);
+		// Calculate new roll & pitch & yaw estimate
+		roll_estimate = kalmanFilter(u_roll, roll, A, B, C, Q, R, x_corr_roll,
+				P_corr_roll);
+		pitch_estimate = kalmanFilter(u_pitch, pitch, A, B, C, Q, R, x_corr_pitch,
+				P_corr_pitch);
+		yaw_estimate = kalmanFilter(u_yaw, yaw, A, B, C, Q, R, x_corr_yaw,
+				P_corr_yaw);
 
-		CDC_Transmit_FS(data_to_send, message_length);
+		HAL_Delay(1);
 
-		HAL_Delay(100);
+		// Get new data from IMU-10
+		accelerometerReadAllAxis(&hi2c3, &acc_x_g, &acc_y_g, &acc_z_g);
+		gyroscopeReadAllAxis(&hi2c3, &gyro_x_dps, &gyro_y_dps, &gyro_z_dps);
+		magnetometerReadAllAxis(&hi2c3, &mag_x_gauss, &mag_y_gauss, &mag_z_gauss);
+
+		// Calculate angles
+		roll = ((float) atan2(acc_z_g, acc_y_g) * (180.0 / 3.1415926) - 88.9494);
+		pitch = ((float) atan2(acc_z_g, acc_x_g) * (180.0 / 3.1415926) - 91.139);
+		yaw = ((float) atan2(mag_x_gauss, mag_y_gauss) * (180.0 / 3.1415926));
+
+		u_roll = gyro_x_dps;
+		u_pitch = gyro_y_dps;
+		u_yaw = gyro_z_dps;
+
+		//CDC_Transmit_FS(data_to_send, kMessageLength);
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
@@ -196,7 +257,66 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+float kalmanFilter(float u, float y, float *A, float *B, float *C, float *Q,
+		float R, float *x_corr, float *P_corr) {
+	float xk_pred[] = { 0.0, 0.0 };
+	float Pk_pred[] = { 0.0, 0.0, 0.0, 0.0 };
 
+	// temporary matrixes for multiplication purposes
+	float Ax[] = { 0.0, 0.0 };
+	float Bu[] = { 0.0, 0.0 };
+
+	float AP[] = { 0.0, 0.0, 0.0, 0.0 };
+	float AT[] = { 0.0, 0.0, 0.0, 0.0 };
+	float APAT[] = { 0.0, 0.0, 0.0, 0.0 };
+
+	float PCT[] = { 0.0, 0.0 };
+	float CP[] = { 0.0, 0.0 };
+	float K[] = { 0.0, 0.0 };
+	float Ke[] = { 0.0, 0.0 };
+	float KC[] = { 0.0, 0.0, 0.0, 0.0 };
+	float eye[] = { 1.0, 0.0, 0.0, 1.0 };
+	float eye_minus_KC[] = { 0.0, 0.0, 0.0, 0.0 };
+
+	float CPCT = 0.0;
+	float S = 0.0;
+	float Cx = 0.0;
+	float error = 0.0;
+
+	// xk_pred = A*xk_corr + B*u
+	matrix_2x2_mul_2x1(A, x_corr, Ax);
+	matrix_2x1_mul_1x1(B, &u, Bu);
+	matrix_2x1_add_2x1(Ax, Bu, xk_pred);
+
+	// Pk_pred = A*Pk_corr*transpose(A) + Q
+	matrix_2x2_mul_2x2(A, P_corr, AP);
+	matrix_2x2_trans(A, AT);
+	matrix_2x2_mul_2x2(AP, AT, APAT);
+	matrix_2x2_add_2x2(APAT, Q, Pk_pred);
+
+	// error = y - C*xk_pred
+	matrix_1x2_mul_2x1(C, xk_pred, &Cx);
+	error = y - Cx;
+
+	// K = (Pk_pred*transpose(C)) / (C*Pk_pred*transpose(C) + R)
+	matrix_2x2_mul_2x1(Pk_pred, C, PCT);
+	matrix_1x2_mul_2x2(C, Pk_pred, CP);
+	matrix_1x2_mul_2x1(CP, C, &CPCT);
+	S = 1.0 / (float) (CPCT + R);
+	matrix_2x1_mul_1x1(PCT, &S, K);
+
+	// xk_corr = xk_pred + K*error
+	matrix_2x1_mul_1x1(K, &error, Ke);
+	matrix_2x1_add_2x1(xk_pred, Ke, x_corr);
+
+	// Pk_corr = (eye(2) - K*C) / Pk_pred
+	matrix_2x1_mul_1x2(K, C, KC);
+	matrix_2x2_sub_2x2(eye, KC, eye_minus_KC);
+	matrix_2x2_mul_2x2(eye_minus_KC, Pk_pred, P_corr);
+
+	// We have calculated new estimate
+	return x_corr[0];
+}
 /* USER CODE END 4 */
 
 /**

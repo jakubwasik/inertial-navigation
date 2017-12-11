@@ -69,12 +69,12 @@
 // Gyroscope full-scale selection [dps] FS_G[1:0]
 #define LSM6DS33_GYRO_RESOLUTION 245.0
 
-void checkI2CConnection(I2C_HandleTypeDef *hi2c);
-void initializeI2C(I2C_HandleTypeDef *hi2c);
-void accelerometerReadAllAxis(I2C_HandleTypeDef *hi2c, int16_t *acc_x,
-		int16_t *acc_y, int16_t *acc_z);
-void gyroscopeReadAllAxis(I2C_HandleTypeDef *hi2c, int16_t *gyro_x,
-		int16_t *gyro_y, int16_t *gyro_z);
+void checkLSM6DS33Connection(I2C_HandleTypeDef *hi2c);
+void initializeLSM6DS33(I2C_HandleTypeDef *hi2c);
+void accelerometerReadAllAxis(I2C_HandleTypeDef *hi2c, float *acc_x,
+		float *acc_y, float *acc_z);
+void gyroscopeReadAllAxis(I2C_HandleTypeDef *hi2c, float *gyro_x, float *gyro_y,
+		float *gyro_z);
 
 // function read all data from Accelerometer and Gyroscope
 // Data, which is stored in uint8_t vector, is used by USB communication

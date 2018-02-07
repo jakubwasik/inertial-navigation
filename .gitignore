@@ -8,3 +8,5 @@ STM32F407G-DISC1.xml
 inertial_navigation Debug.cfg
 Matlab_scripts/slprj/
 Matlab_scripts/plots/
+Matlab_scripts/workspaces/
+*.mat

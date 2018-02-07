@@ -100,7 +100,7 @@ int main(void)
 	uint8_t data_to_send[kMessageLength];
 
 	// Kalman filter variables
-	float dt = 0.00001;
+	float dt = 0.001;
 	float A[] = { 1.0, -dt, 0.0, 1.0 };
 	float B[] = { dt, 0.0 };
 	float C[] = { 1.0, 0.0 };
@@ -175,6 +175,10 @@ int main(void)
 		yaw_estimate = kalmanFilter(u_yaw, yaw, A, B, C, Q, R, x_corr_yaw,
 				P_corr_yaw);
 
+		//readDataFromLSM6DS33(&hi2c3, data_to_send);
+		//readDataFromLIS3MDL(&hi2c3, data_to_send + kLSM6DS33MessageLength);
+		//CDC_Transmit_FS(data_to_send, kMessageLength);
+
 		HAL_Delay(1);
 
 		// Get new data from IMU-10
@@ -191,7 +195,6 @@ int main(void)
 		u_pitch = gyro_y_dps;
 		u_yaw = gyro_z_dps;
 
-		//CDC_Transmit_FS(data_to_send, kMessageLength);
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */

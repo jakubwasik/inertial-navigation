@@ -3,9 +3,9 @@ close all;
 
 q = 0.0001;r = 1;
 Q = [0.8 0;0 0.1]*q;   % niepewnoœæ procesu (szumy procesowe i niepewnoœæ modelowania)
-R = r;             % niepewnoœæ pomiaru (im mniejsze tym bardziej ufamy pomiarom)
+R = r;                 % niepewnoœæ pomiaru (im mniejsze tym bardziej ufamy pomiarom)
         
-dt = 0.00001;
+dt = 0.001;
 A = [1 -dt;0 1];
 B = [dt; 0];
 C = [1 0];
